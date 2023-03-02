@@ -23,7 +23,7 @@ pipeline{
                 sh "./changeTag.sh ${DOCKER_IMAGE_TAG}"
 
                 sshagent(['instanceForDocker']){
-                    sh "scp services.yml node-app-pod.yml ubuntu@172.31.48.203:/home/ubuntu"
+                    sh "scp -o StrictHostKeyChecking=no services.yml node-app-pod.yml ubuntu@172.31.48.203:/home/ubuntu"
 
                     script {
                         try {
