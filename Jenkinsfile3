@@ -1,44 +1,45 @@
 pipeline{
-  agent any
-  environment{
-    DOCKER_IMAGE_TAG = getNewTag()
-  }
-  stages{
-    stage("Build dockerfile"){
-      steps{
-        sh "docker build . -t anhdo98/my-docker-app:${DOCKER_IMAGE_TAG}"
-      }
+    agent any
+    environment {
+        DOCKER_IMAGE_TAG = getNewTag()
     }
-    
-    stage("Push docker image to dockerhub"){
-      steps{
-        withCredentials([string(credentialsId: 'docker-pwd', variable: 'dockerHubPwd')]) {
-          sh "docker login -u anhdo98 -p ${dockerHubPwd}"
-        }
-        sh 'docker push anhdo98/my-docker-app:${DOCKER_IMAGE_TAG}'
-      }
-    }
-    
-    stage("Deploy docker image to k8s"){
-      steps{
-        sh "chmod +x changeTag.sh"
-        sh "./changeTag.sh ${DOCKER_IMAGE_TAG}"
-        sshagent(['k8s-env']) {
-          sh "scp -o StrictHostKeyChecking=no services.yml node-app-pod.yml ubuntu@3.35.197.19:/home/ubuntu"
-          script{
-            try{
-              sh "ssh ubuntu@3.35.197.19 kubectl apply -f ."
-            }catch(error){
-              sh "ssh ubuntu@3.35.197.19 kubectl create -f ."
+
+    stages{
+        stage('1. Build image from Dockerfile'){
+            steps {
+                sh "docker build -t trinh00thien/my-docker-app:${DOCKER_IMAGE_TAG}"
             }
-          }
         }
-      }
+
+        stage('2. Push docker image to dockerhub'){
+            steps {
+                sh "docker image push trinh00thien/my-docker-app:${DOCKER_IMAGE_TAG}"
+            }
+        }
+
+        stage('3. Deploy docker image to k8s'){
+            steps {
+                sh "chmod +x changeTag.sh"
+                sh "./changeTag.sh ${DOCKER_IMAGE_TAG}"
+
+                sshagent(['instanceForDocker']){
+                    sh "scp services.yml node-app-pod.yml ubuntu@172.31.48.203:/home/ubuntu"
+
+                    script {
+                        try {
+                            sh "ssh ubuntu@0.0.0.0 kubectl create -f ."
+                        } catch(error) {
+                            sh "ssh ubuntu@0.0.0.0 kubectl apply -f ."
+                        }
+                    }
+                }
+            }
+
+        }
     }
-  }
 }
 
 def getNewTag(){
-    def tag  = sh script: 'git rev-parse HEAD', returnStdout: true
+    def tag = sh script: 'git rev-parse HEAD', returnStdout: true
     return tag
 }
