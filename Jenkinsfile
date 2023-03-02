@@ -24,14 +24,7 @@ pipeline{
 
                 sshagent(['instanceForDocker']){
                     sh "scp -o StrictHostKeyChecking=no services.yml node-app-pod.yml ubuntu@172.31.48.203:/home/ubuntu"
-
-                    script {
-                        try {
-                            sh "ssh ubuntu@172.31.48.203 kubectl create -f ."
-                        } catch(error) {
-                            sh "ssh ubuntu@172.31.48.203 kubectl apply -f ."
-                        }
-                    }
+                    sh "ssh ubuntu@172.31.48.203 kubectl apply -f ."
                 }
             }
 
